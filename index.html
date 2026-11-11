@@ -1,0 +1,1726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Instagram Carousel Slide Splitter & Grid Previewer</title>
+  <meta name="description" content="Slice wide panoramic images into seamless Instagram carousel slides with 1:1 square or 4:5 portrait ratios, live feed preview, and 1-click ZIP download." />
+  
+  <!-- Modern Inter & JetBrains Mono typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            brand: {
+              50: '#fff1f2',
+              100: '#ffe4e6',
+              500: '#f43f5e',
+              600: '#e11d48',
+              700: '#be123c',
+            }
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- JSZip CDN for 100% client-side ZIP bundle download -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+  <!-- Embedded Custom Styles -->
+  <style>
+    /* Custom horizontal scrollbar */
+    .custom-scrollbar::-webkit-scrollbar {
+      height: 6px;
+      width: 6px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.4);
+      border-radius: 9999px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: rgba(148, 163, 184, 0.7);
+    }
+
+    .dark .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: rgba(71, 85, 105, 0.5);
+    }
+
+    .dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: rgba(100, 116, 139, 0.8);
+    }
+
+    /* Theme Toggle Button Icons */
+    .sun-icon {
+      display: none;
+    }
+    .moon-icon {
+      display: block;
+    }
+
+    .dark .sun-icon {
+      display: block;
+    }
+    .dark .moon-icon {
+      display: none;
+    }
+
+    /* Ratio & Format Buttons Active State */
+    .ratio-btn,
+    .format-btn {
+      border-color: #e2e8f0;
+      background-color: #f8fafc;
+    }
+
+    .dark .ratio-btn,
+    .dark .format-btn {
+      border-color: #334155;
+      background-color: #1e293b;
+    }
+
+    .ratio-btn.active,
+    .format-btn.active {
+      border-color: #f43f5e;
+      background-color: #fff1f2;
+    }
+
+    .dark .ratio-btn.active,
+    .dark .format-btn.active {
+      border-color: #f43f5e;
+      background-color: rgba(244, 63, 94, 0.15);
+    }
+
+    .ratio-btn.active strong,
+    .format-btn.active strong {
+      color: #e11d48;
+    }
+
+    .dark .ratio-btn.active strong,
+    .dark .format-btn.active strong {
+      color: #fb7185;
+    }
+
+    /* Slide Count Buttons */
+    .slide-num-btn {
+      flex: 1;
+      min-width: 28px;
+      height: 32px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+      color: #64748b;
+    }
+
+    .dark .slide-num-btn {
+      color: #94a3b8;
+    }
+
+    .slide-num-btn:hover {
+      color: #0f172a;
+    }
+    .dark .slide-num-btn:hover {
+      color: #ffffff;
+    }
+
+    .slide-num-btn.active {
+      background-color: #ffffff;
+      color: #e11d48;
+      box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    }
+
+    .dark .slide-num-btn.active {
+      background-color: #1e293b;
+      color: #fb7185;
+      box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    }
+
+    .slide-num-btn .rec-dot {
+      font-size: 0.55rem;
+      line-height: 1;
+      color: #f59e0b;
+    }
+
+    /* Preview Slices Container - Cards Mode */
+    .slides-container.cards-mode {
+      gap: 0.75rem;
+    }
+
+    .slide-card {
+      width: 210px;
+      background-color: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 0.65rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      flex-shrink: 0;
+      transition: border-color 0.15s ease;
+    }
+
+    .dark .slide-card {
+      background-color: #1e293b;
+      border-color: #334155;
+    }
+
+    .slide-card:hover {
+      border-color: #cbd5e1;
+    }
+
+    .dark .slide-card:hover {
+      border-color: #475569;
+    }
+
+    .slide-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.7rem;
+      font-weight: 700;
+      margin-bottom: 0.4rem;
+    }
+
+    .slide-card-header span {
+      font-family: 'JetBrains Mono', monospace;
+      color: #94a3b8;
+      font-size: 0.65rem;
+    }
+
+    .slide-card-img-wrap {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      background-color: #0f172a;
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .slide-card-img-wrap.portrait {
+      aspect-ratio: 4 / 5;
+    }
+
+    .slide-card-img-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.2s ease;
+    }
+
+    .slide-card-img-wrap:hover img {
+      transform: scale(1.04);
+    }
+
+    .slide-card-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 0.5rem;
+      padding-top: 0.4rem;
+      border-top: 1px solid #e2e8f0;
+    }
+
+    .dark .slide-card-footer {
+      border-color: #334155;
+    }
+
+    .slide-file-label {
+      font-size: 0.65rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: #94a3b8;
+    }
+
+    .dark .slide-file-label {
+      color: #64748b;
+    }
+
+    /* Preview Slices Container - Seamless Ribbon Mode */
+    .slides-container.seamless-mode {
+      gap: 0;
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid #e2e8f0;
+    }
+
+    .dark .slides-container.seamless-mode {
+      border-color: #334155;
+    }
+
+    .seamless-slice {
+      position: relative;
+      width: 200px;
+      height: 200px;
+      flex-shrink: 0;
+      background-color: #0f172a;
+      cursor: pointer;
+    }
+
+    .seamless-slice.portrait {
+      width: 180px;
+      height: 225px;
+    }
+
+    .seamless-slice img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .seamless-cut-line {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 1px;
+      border-right: 1px dashed rgba(255, 255, 255, 0.7);
+      pointer-events: none;
+    }
+
+    .seamless-number {
+      position: absolute;
+      top: 6px;
+      left: 6px;
+      background: rgba(15, 23, 42, 0.75);
+      color: #ffffff;
+      font-size: 0.65rem;
+      padding: 0.1rem 0.35rem;
+      border-radius: 4px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Instagram Post Simulator */
+    .ig-icon-btn.liked svg {
+      fill: #f43f5e;
+      color: #f43f5e;
+    }
+
+    .ig-icon-btn.saved svg {
+      fill: currentColor;
+    }
+
+    .ig-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background-color: #cbd5e1;
+      transition: all 0.2s ease;
+    }
+
+    .dark .ig-dot {
+      background-color: #475569;
+    }
+
+    .ig-dot.active {
+      background-color: #0ea5e9;
+      width: 12px;
+      border-radius: 4px;
+    }
+
+    .jump-btn {
+      padding: 0.35rem;
+      text-align: center;
+      font-size: 0.7rem;
+      font-weight: 700;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      background: #ffffff;
+      transition: all 0.15s ease;
+    }
+
+    .dark .jump-btn {
+      border-color: #334155;
+      background: #1e293b;
+      color: #e2e8f0;
+    }
+
+    .jump-btn:hover {
+      border-color: #cbd5e1;
+    }
+
+    .dark .jump-btn:hover {
+      border-color: #475569;
+    }
+
+    .jump-btn.active {
+      background-color: #f43f5e;
+      color: #ffffff;
+      border-color: #f43f5e;
+    }
+
+    .dark .jump-btn.active {
+      background-color: #f43f5e;
+      color: #ffffff;
+      border-color: #f43f5e;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col font-sans antialiased transition-colors duration-200">
+
+  <!-- Header: Clean and minimal with ONLY the Light/Dark theme toggle -->
+  <header class="sticky top-0 z-40 w-full bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 transition-colors">
+    <div class="max-w-4xl mx-auto px-4 h-14 flex items-center justify-end">
+      <!-- Modern Pill-shaped Theme Toggle Button -->
+      <button
+        id="themeToggleBtn"
+        type="button"
+        aria-label="Toggle theme"
+        class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700/80 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-rose-500/40"
+      >
+        <!-- Sun icon -->
+        <svg class="sun-icon w-3.5 h-3.5 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="4"></circle>
+          <path d="M12 2v2"></path>
+          <path d="M12 20v2"></path>
+          <path d="m4.93 4.93 1.41 1.41"></path>
+          <path d="m17.66 17.66 1.41 1.41"></path>
+          <path d="M2 12h2"></path>
+          <path d="M20 12h2"></path>
+          <path d="m6.34 17.66-1.41 1.41"></path>
+          <path d="m19.07 4.93-1.41 1.41"></path>
+        </svg>
+        <!-- Moon icon -->
+        <svg class="moon-icon w-3.5 h-3.5 text-slate-600 dark:text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"></path>
+        </svg>
+        <span id="themeToggleLabel">Dark</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Container: Constrained to max-w-4xl and centered -->
+  <main class="flex-1 max-w-4xl w-full mx-auto px-4 py-8 sm:py-10 space-y-6">
+
+    <!-- Hero / Intro Section with refined, balanced typography -->
+    <section class="text-center space-y-2 max-w-2xl mx-auto">
+      <span class="inline-block text-[11px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/50 px-2.5 py-0.5 rounded-full border border-rose-200/60 dark:border-rose-900/60">
+        100% Client-Side Canvas
+      </span>
+      <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
+        Instagram Carousel Slide Splitter
+      </h1>
+      <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+        Slice wide panoramic photos into seamless multi-slide carousels. Preview the uninterrupted mobile feed swiping experience and download all slides as a ZIP.
+      </p>
+    </section>
+
+    <!-- Error Alert Banner -->
+    <div id="errorBanner" class="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/80 text-rose-800 dark:text-rose-200 text-xs flex items-start justify-between gap-3 shadow-sm" style="display: none;">
+      <div class="flex items-start gap-2.5">
+        <svg class="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        <div>
+          <strong id="errorTitle" class="font-semibold">Invalid File</strong>
+          <p id="errorMessage" class="text-rose-700 dark:text-rose-300 mt-0.5">Please upload a valid image file (JPEG, PNG, or WebP).</p>
+        </div>
+      </div>
+      <button id="dismissErrorBtn" class="text-rose-600 hover:text-rose-900 dark:text-rose-400 dark:hover:text-rose-200 font-bold p-1 leading-none" type="button" aria-label="Dismiss error">✕</button>
+    </div>
+
+    <!-- Upload Area: Sleek centered dashed box with soft rounded-2xl corners -->
+    <section class="w-full">
+      <div
+        id="dropZone"
+        class="relative border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-rose-500 dark:hover:border-rose-400 bg-white dark:bg-slate-800/60 hover:bg-rose-50/30 dark:hover:bg-slate-800 rounded-2xl p-8 sm:p-10 text-center cursor-pointer transition-all duration-200 shadow-sm hover:shadow-md group"
+      >
+        <input type="file" id="fileInput" accept="image/jpeg, image/png, image/webp" class="hidden" />
+        
+        <div class="flex flex-col items-center justify-center max-w-sm mx-auto space-y-3">
+          <!-- Soft SVG Upload Icon -->
+          <div class="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 group-hover:text-rose-600 dark:group-hover:text-rose-400 group-hover:bg-rose-50 dark:group-hover:bg-rose-950/40 flex items-center justify-center transition-all duration-200">
+            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="17 8 12 3 7 8"></polyline>
+              <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+          </div>
+
+          <div>
+            <h2 class="text-sm sm:text-base font-semibold text-slate-900 dark:text-white">
+              Drop your panoramic image here, or <button type="button" id="browseBtn" class="text-rose-600 dark:text-rose-400 underline decoration-rose-300 dark:decoration-rose-700 underline-offset-2 font-bold hover:text-rose-700">browse files</button>
+            </h2>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              Supports JPEG, PNG, and WebP. Processed locally in your browser.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Loaded Image Info Card -->
+      <div
+        id="imageInfoCard"
+        class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700/80 p-4 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 transition-all"
+        style="display: none;"
+      >
+        <div class="flex items-center gap-3.5 min-w-0">
+          <div class="w-14 h-14 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 shrink-0">
+            <img id="imageThumb" src="" alt="Thumbnail preview" class="w-full h-full object-cover" />
+          </div>
+          <div class="min-w-0">
+            <div class="text-sm font-semibold text-slate-900 dark:text-white truncate" id="imageName">image.jpg</div>
+            <div class="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-slate-500 dark:text-slate-400 font-mono mt-0.5">
+              <span id="imageDimensions">0 × 0 px</span>
+              <span class="text-slate-300 dark:text-slate-600">·</span>
+              <span id="imageAspect">Ratio: 0:1</span>
+              <span class="text-slate-300 dark:text-slate-600">·</span>
+              <span id="imageSize">0 KB</span>
+            </div>
+            <div class="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5" id="imageHint">Auto-calculated optimal slides based on aspect ratio.</div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 self-end sm:self-center shrink-0">
+          <button type="button" id="changeImageBtn" class="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 transition-colors">
+            Replace
+          </button>
+          <button type="button" id="clearImageBtn" class="px-3 py-1.5 rounded-lg text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors">
+            Remove
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Slicing Controls (Visible when image is loaded) -->
+    <section id="controlsSection" class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700/80 p-5 sm:p-6 shadow-sm space-y-5" style="display: none;">
+      <div class="flex items-center justify-between pb-3.5 border-b border-slate-100 dark:border-slate-700/60">
+        <h3 class="text-sm font-bold tracking-tight text-slate-900 dark:text-white">Carousel Parameters</h3>
+        <span id="recommendedBadge" class="text-xs font-medium px-2.5 py-0.5 rounded-full bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 border border-rose-200/60 dark:border-rose-900/60">
+          Recommended: 3 slides
+        </span>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
+        <!-- Control 1: Aspect Ratio -->
+        <div class="space-y-1.5">
+          <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">1. Aspect Ratio</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              class="ratio-btn p-2.5 rounded-lg border text-left transition-all flex flex-col justify-between"
+              data-ratio="1:1"
+              id="ratioSquareBtn"
+            >
+              <strong class="text-xs font-semibold text-slate-900 dark:text-white">Square (1:1)</strong>
+              <span class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">1080 × 1080</span>
+            </button>
+            <button
+              type="button"
+              class="ratio-btn p-2.5 rounded-lg border text-left transition-all flex flex-col justify-between"
+              data-ratio="4:5"
+              id="ratioPortraitBtn"
+            >
+              <strong class="text-xs font-semibold text-slate-900 dark:text-white">Portrait (4:5)</strong>
+              <span class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">1080 × 1350</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Control 2: Slide Count -->
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between">
+            <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">2. Slide Count</label>
+            <button type="button" id="autoSlideBtn" class="text-[11px] font-semibold text-rose-600 dark:text-rose-400 hover:underline">Auto</button>
+          </div>
+          <div class="flex flex-wrap gap-1 p-1 bg-slate-100 dark:bg-slate-700/60 rounded-lg border border-slate-200 dark:border-slate-700" id="slideCountContainer">
+            <!-- Injected via script -->
+          </div>
+        </div>
+
+        <!-- Control 3: Export Format -->
+        <div class="space-y-1.5">
+          <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">3. Format</label>
+          <div class="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              class="format-btn p-2.5 rounded-lg border text-left transition-all flex flex-col justify-between"
+              data-format="image/png"
+              id="formatPngBtn"
+            >
+              <strong class="text-xs font-semibold text-slate-900 dark:text-white">PNG</strong>
+              <span class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Lossless crisp</span>
+            </button>
+            <button
+              type="button"
+              class="format-btn p-2.5 rounded-lg border text-left transition-all flex flex-col justify-between"
+              data-format="image/jpeg"
+              id="formatJpegBtn"
+            >
+              <strong class="text-xs font-semibold text-slate-900 dark:text-white">JPEG</strong>
+              <span class="text-[10px] text-slate-500 dark:text-slate-400 mt-1">High 95%</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Calculation & Quick Download CTA Bar -->
+      <div class="pt-4 border-t border-slate-100 dark:border-slate-700/60 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-slate-500 dark:text-slate-400 font-mono">
+          <span><strong id="calcSlideCount" class="text-slate-900 dark:text-white font-bold">3</strong> slides</span>
+          <span class="text-slate-300 dark:text-slate-600">·</span>
+          <span id="calcDimensions">1080 × 1080 px</span>
+          <span class="text-slate-300 dark:text-slate-600">·</span>
+          <span>Banner <strong id="calcTotalWidth" class="text-slate-900 dark:text-white font-bold">3240</strong> × <span id="calcTotalHeight">1080</span> px</span>
+        </div>
+
+        <button
+          type="button"
+          id="downloadAllTopBtn"
+          class="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 shadow-sm transition-all shadow-rose-600/20"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-3.5 h-3.5">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span id="downloadAllTopText">Download All (.zip)</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Sliced Slides Grid Previewer -->
+    <section id="previewSection" class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700/80 p-5 sm:p-6 shadow-sm space-y-4" style="display: none;">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-slate-100 dark:border-slate-700/60">
+        <div>
+          <h3 class="text-sm font-bold tracking-tight text-slate-900 dark:text-white">Sliced Slides Preview</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Scroll horizontally to review sliced segments or verify seamless edges.</p>
+        </div>
+
+        <div class="flex items-center gap-2.5">
+          <!-- View mode toggle -->
+          <div class="inline-flex p-1 bg-slate-100 dark:bg-slate-700/60 rounded-lg border border-slate-200 dark:border-slate-700 text-xs">
+            <button type="button" id="viewCardsBtn" class="px-2.5 py-1 rounded-md font-semibold text-slate-900 dark:text-white bg-white dark:bg-slate-800 shadow-xs transition-colors">Cards</button>
+            <button type="button" id="viewSeamlessBtn" class="px-2.5 py-1 rounded-md font-medium text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">Seamless</button>
+          </div>
+
+          <button
+            type="button"
+            id="downloadAllGridBtn"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-slate-900 hover:bg-slate-800 dark:bg-rose-600 dark:hover:bg-rose-700 transition-colors shadow-sm"
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-3.5 h-3.5">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            <span id="downloadAllGridText">Download All</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Horizontal Scrollable Slices Container -->
+      <div class="overflow-x-auto pb-2 custom-scrollbar">
+        <div id="slidesContainer" class="flex items-stretch min-w-max gap-3 cards-mode">
+          <!-- Populated by JavaScript -->
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between text-[11px] text-slate-400 dark:text-slate-500">
+        <span>← Scroll horizontally to inspect all slides →</span>
+        <span>Click any slide to zoom</span>
+      </div>
+    </section>
+
+    <!-- Interactive Instagram Feed Post Simulator -->
+    <section id="feedSection" class="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700/80 p-5 sm:p-6 shadow-sm space-y-6" style="display: none;">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-slate-100 dark:border-slate-700/60">
+        <div>
+          <h3 class="text-sm font-bold tracking-tight text-slate-900 dark:text-white">Mobile Feed Simulator</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Test swiping through the seamless carousel as it appears on Instagram mobile.</p>
+        </div>
+
+        <button
+          type="button"
+          id="autoPlayFeedBtn"
+          class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 transition-colors"
+        >
+          <span id="autoPlayIcon">▶</span>
+          <span id="autoPlayText">Auto Play</span>
+        </button>
+      </div>
+
+      <div class="flex flex-col md:flex-row items-center md:items-start justify-center gap-6">
+        <!-- Mock Instagram Card -->
+        <div class="w-full max-w-[360px] bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-lg overflow-hidden transition-all">
+          <!-- IG Header -->
+          <div class="flex items-center justify-between px-3 py-2.5 border-b border-slate-100 dark:border-slate-800">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded-full p-[1.5px] bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-600 flex items-center justify-center">
+                <div class="w-full h-full rounded-full bg-white dark:bg-slate-900 p-[1px] flex items-center justify-center">
+                  <div class="w-full h-full rounded-full bg-slate-800 flex items-center justify-center text-white text-[9px] font-black">
+                    IG
+                  </div>
+                </div>
+              </div>
+              <div>
+                <div class="flex items-center gap-1 text-xs font-bold text-slate-900 dark:text-white">
+                  <span>panoramic.creator</span>
+                  <span class="text-[9px] bg-sky-500 text-white rounded-full w-3 h-3 flex items-center justify-center font-bold">✓</span>
+                </div>
+                <div class="text-[10px] text-slate-400">Original audio · Seamless</div>
+              </div>
+            </div>
+            <span class="text-slate-400 text-xs">•••</span>
+          </div>
+
+          <!-- IG Viewport -->
+          <div id="igViewport" class="relative w-full aspect-square bg-slate-950 overflow-hidden select-none">
+            <img id="igCurrentSlideImg" class="w-full h-full object-cover transition-opacity duration-150" src="" alt="Slide view" />
+            <div id="igSlideCounter" class="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-sm text-white text-[10px] font-semibold">1/3</div>
+            
+            <button type="button" id="igPrevBtn" class="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/85 hover:bg-white text-slate-900 flex items-center justify-center text-sm font-bold shadow transition-transform hover:scale-105" aria-label="Previous">‹</button>
+            <button type="button" id="igNextBtn" class="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-white/85 hover:bg-white text-slate-900 flex items-center justify-center text-sm font-bold shadow transition-transform hover:scale-105" aria-label="Next">›</button>
+          </div>
+
+          <!-- IG Action Bar -->
+          <div class="px-3 pt-2.5 pb-1.5 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <button type="button" id="igLikeBtn" class="text-slate-800 dark:text-slate-200 hover:text-rose-500 transition-colors" aria-label="Like">
+                <svg id="igHeartSvg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path>
+                </svg>
+              </button>
+              <button type="button" class="text-slate-800 dark:text-slate-200" aria-label="Comment">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"></path>
+                </svg>
+              </button>
+              <button type="button" class="text-slate-800 dark:text-slate-200" aria-label="Share">
+                <svg class="w-5 h-5 -rotate-12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="22" y1="2" x2="11" y2="13"></line>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+              </button>
+            </div>
+
+            <div id="igDotsContainer" class="flex items-center gap-1"></div>
+
+            <button type="button" id="igSaveBtn" class="text-slate-800 dark:text-slate-200" aria-label="Save">
+              <svg id="igBookmarkSvg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"></path>
+              </svg>
+            </button>
+          </div>
+
+          <!-- IG Captions -->
+          <div class="px-3 pb-3 text-xs space-y-1 text-slate-800 dark:text-slate-200">
+            <div class="font-bold" id="igLikesCount">1,842 likes</div>
+            <div class="leading-snug">
+              <strong class="font-bold mr-1">panoramic.creator</strong>
+              Swipe left across all slides for the seamless panoramic transition!
+            </div>
+            <div class="text-[10px] text-slate-400">View all 48 comments</div>
+            <div class="text-[9px] text-slate-400 uppercase tracking-wider">2 hours ago</div>
+          </div>
+        </div>
+
+        <!-- Direct Jump & Pro Tips -->
+        <div class="w-full max-w-sm space-y-3.5">
+          <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700/80 space-y-2">
+            <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Quick Slide Jump</h4>
+            <div id="feedJumpGrid" class="grid grid-cols-5 gap-1.5"></div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700/80 space-y-2 text-xs text-slate-600 dark:text-slate-300">
+            <div class="font-bold text-slate-900 dark:text-white">Posting Instructions</div>
+            <ul class="space-y-1 text-slate-500 dark:text-slate-400 list-disc list-inside">
+              <li>Upload files in order (<code class="text-rose-500 font-mono text-[11px]">slide-01</code>, <code class="text-rose-500 font-mono text-[11px]">slide-02</code>).</li>
+              <li>Tap the <strong>Select Multiple</strong> stacked squares button in Instagram.</li>
+              <li>Ensure the aspect ratio toggle matches 1:1 or 4:5 to avoid feed cropping.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Professional App Documentation & Educational SEO Section -->
+    <section class="mt-20 pt-12 border-t border-slate-200/80 dark:border-slate-800 space-y-10">
+      <div class="space-y-2">
+        <span class="text-[11px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">
+          Creator Knowledge Base
+        </span>
+        <h2 class="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+          Comprehensive Guide to Seamless Instagram Carousels
+        </h2>
+        <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-400 leading-relaxed max-w-3xl">
+          Discover how panoramic multi-slide carousels enhance viewer retention, discoverability, and feed aesthetics on Instagram without any external server processing.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- Topic 1: How to Create Seamless Instagram Carousels -->
+        <article class="bg-white dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700/80 p-5 space-y-3 flex flex-col justify-between shadow-xs">
+          <div class="space-y-2.5">
+            <div class="w-8 h-8 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center text-xs font-bold">
+              01
+            </div>
+            <h3 class="text-base font-bold text-slate-900 dark:text-white">
+              How to Create Seamless Instagram Carousels
+            </h3>
+            <p class="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+              Creating an unbroken panorama is simple. First, prepare a wide image in Photoshop, Figma, or your camera roll where the width is two to ten times the height. Upload the file to our splitter above. The client-side engine automatically detects your dimensions and recommends the exact number of slides. Choose between classic 1080×1080px square or 1080×1350px portrait segments, verify edge continuity in the live grid preview, and click <strong>Download All</strong> to receive an organized, numbered ZIP archive.
+            </p>
+          </div>
+          <div class="pt-3 border-t border-slate-100 dark:border-slate-700/60 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+            Step-by-step workflow • 1080px resolution
+          </div>
+        </article>
+
+        <!-- Topic 2: Why Seamless Carousels Boost Engagement -->
+        <article class="bg-white dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700/80 p-5 space-y-3 flex flex-col justify-between shadow-xs">
+          <div class="space-y-2.5">
+            <div class="w-8 h-8 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center text-xs font-bold">
+              02
+            </div>
+            <h3 class="text-base font-bold text-slate-900 dark:text-white">
+              Why Seamless Carousels Boost Engagement
+            </h3>
+            <p class="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+              Instagram's recommendation algorithm rewards dwell time—the duration users spend viewing your post. Because seamless carousels place visual elements across dividing borders, viewers instinctively swipe to complete the visual story. Furthermore, if a follower scrolls past your first slide without liking it, Instagram will frequently surface the second slide to that follower later in the day, giving your content a second opportunity for impressions, likes, and saves without extra ad spend.
+            </p>
+          </div>
+          <div class="pt-3 border-t border-slate-100 dark:border-slate-700/60 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+            Algorithmic reach • Increased dwell time
+          </div>
+        </article>
+
+        <!-- Topic 3: 100% Secure & Private -->
+        <article class="bg-white dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700/80 p-5 space-y-3 flex flex-col justify-between shadow-xs">
+          <div class="space-y-2.5">
+            <div class="w-8 h-8 rounded-lg bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 flex items-center justify-center text-xs font-bold">
+              03
+            </div>
+            <h3 class="text-base font-bold text-slate-900 dark:text-white">
+              100% Secure & Private In-Browser Processing
+            </h3>
+            <p class="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+              Unlike cloud-based image converters that transmit your files to third-party databases, our Carousel Splitter runs exclusively in your web browser. Utilizing modern HTML5 Canvas and JavaScript FileReader APIs, all image slicing, cropping, and ZIP compression occur directly inside your device's memory. Your personal photographs, brand graphics, and unreleased creative designs are never transmitted across the network, stored on servers, or tracked.
+            </p>
+          </div>
+          <div class="pt-3 border-t border-slate-100 dark:border-slate-700/60 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+            Local browser memory • Zero server telemetry
+          </div>
+        </article>
+      </div>
+
+      <!-- Additional Text Section: Pro Tips for Perfect Grid Alignment -->
+      <div class="bg-white dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700/80 p-5 sm:p-6 space-y-2.5 shadow-xs">
+        <h3 class="text-base font-bold text-slate-900 dark:text-white">
+          Pro Tips for Perfect Grid Alignment
+        </h3>
+        <p class="text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+          To achieve flawless, razor-sharp seam alignment on Instagram without unwanted stretching or black borders, always design your continuous artboard using exact integer multiples of Instagram's native slide resolution. For standard 1:1 square carousels, set your canvas height to 1080px and multiply 1080 by the number of desired slides: use 2160×1080px for 2 slides, 3240×1080px for 3 slides, 4320×1080px for 4 slides, or 5400×1080px for 5 slides in design tools like Canva, Adobe Photoshop, or Figma. If you prefer high-engagement 4:5 vertical portrait carousels, set your artboard height to 1350px and use widths of 2160×1350px for 2 slides, 3240×1350px for 3 slides, or 5400×1350px for 5 slides. Additionally, place key headlines and logos slightly away from the exact cut boundaries (the 1080px intervals) to ensure text remains effortlessly readable as viewers swipe across slides.
+        </p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Slide Zoom Modal -->
+  <div id="slideModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4" style="display: none;">
+    <div class="relative max-w-2xl w-full bg-white dark:bg-slate-800 rounded-2xl overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-700">
+      <div class="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700">
+        <h4 id="modalSlideTitle" class="text-sm font-bold text-slate-900 dark:text-white">Slide 01</h4>
+        <div class="flex items-center gap-2">
+          <button type="button" id="modalDownloadBtn" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 transition-colors">
+            Download
+          </button>
+          <button type="button" id="modalCloseBtn" class="p-1 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors" aria-label="Close modal">
+            ✕
+          </button>
+        </div>
+      </div>
+      <div class="p-4 bg-slate-100 dark:bg-slate-900 flex items-center justify-center max-h-[70vh] overflow-auto">
+        <img id="modalSlideImg" src="" alt="Full resolution slide preview" class="max-h-[60vh] max-w-full rounded-lg shadow-md object-contain" />
+      </div>
+    </div>
+  </div>
+
+  <!-- Professional Footer -->
+  <footer class="mt-20 py-8 border-t border-slate-200 dark:border-slate-800 text-center text-sm text-slate-500 dark:text-slate-400">
+    <div class="max-w-4xl mx-auto px-4 space-y-3">
+      <div class="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
+        <a href="about.html" class="hover:text-slate-900 dark:hover:text-white transition-colors">About Us</a>
+        <a href="privacy-policy.html" class="hover:text-slate-900 dark:hover:text-white transition-colors">Privacy Policy</a>
+        <span class="inline-flex items-center gap-1.5 flex-wrap justify-center">
+          <a href="contact.html" class="hover:text-slate-900 dark:hover:text-white transition-colors">Contact Us</a>
+          <span class="text-slate-400 dark:text-slate-500">(Email: <a href="mailto:mohitsonar13@gmail.com" class="text-rose-600 dark:text-rose-400 hover:underline">mohitsonar13@gmail.com</a>)</span>
+        </span>
+      </div>
+      <p class="text-xs text-slate-400 dark:text-slate-500">
+        &copy; 2026 Instagram Carousel Slide Splitter & Grid Previewer. All rights reserved.
+      </p>
+    </div>
+  </footer>
+
+  <!-- Embedded Vanilla JavaScript Logic -->
+  <script>
+    /**
+     * Instagram Carousel Slide Splitter & Grid Previewer
+     * Pure Vanilla JavaScript implementation (100% Client-Side)
+     */
+    document.addEventListener('DOMContentLoaded', () => {
+      // --- DOM Element References ---
+      const themeToggleBtn = document.getElementById('themeToggleBtn');
+      const themeToggleLabel = document.getElementById('themeToggleLabel');
+
+      const dropZone = document.getElementById('dropZone');
+      const fileInput = document.getElementById('fileInput');
+      const browseBtn = document.getElementById('browseBtn');
+      const errorBanner = document.getElementById('errorBanner');
+      const errorMessage = document.getElementById('errorMessage');
+      const dismissErrorBtn = document.getElementById('dismissErrorBtn');
+
+      const imageInfoCard = document.getElementById('imageInfoCard');
+      const imageThumb = document.getElementById('imageThumb');
+      const imageName = document.getElementById('imageName');
+      const imageDimensions = document.getElementById('imageDimensions');
+      const imageAspect = document.getElementById('imageAspect');
+      const imageSize = document.getElementById('imageSize');
+      const imageHint = document.getElementById('imageHint');
+      const changeImageBtn = document.getElementById('changeImageBtn');
+      const clearImageBtn = document.getElementById('clearImageBtn');
+
+      const controlsSection = document.getElementById('controlsSection');
+      const recommendedBadge = document.getElementById('recommendedBadge');
+      const ratioSquareBtn = document.getElementById('ratioSquareBtn');
+      const ratioPortraitBtn = document.getElementById('ratioPortraitBtn');
+      const autoSlideBtn = document.getElementById('autoSlideBtn');
+      const slideCountContainer = document.getElementById('slideCountContainer');
+      const formatPngBtn = document.getElementById('formatPngBtn');
+      const formatJpegBtn = document.getElementById('formatJpegBtn');
+
+      const calcSlideCount = document.getElementById('calcSlideCount');
+      const calcDimensions = document.getElementById('calcDimensions');
+      const calcTotalWidth = document.getElementById('calcTotalWidth');
+      const calcTotalHeight = document.getElementById('calcTotalHeight');
+      const downloadAllTopBtn = document.getElementById('downloadAllTopBtn');
+      const downloadAllTopText = document.getElementById('downloadAllTopText');
+
+      const previewSection = document.getElementById('previewSection');
+      const viewCardsBtn = document.getElementById('viewCardsBtn');
+      const viewSeamlessBtn = document.getElementById('viewSeamlessBtn');
+      const downloadAllGridBtn = document.getElementById('downloadAllGridBtn');
+      const downloadAllGridText = document.getElementById('downloadAllGridText');
+      const slidesContainer = document.getElementById('slidesContainer');
+
+      const feedSection = document.getElementById('feedSection');
+      const igViewport = document.getElementById('igViewport');
+      const igCurrentSlideImg = document.getElementById('igCurrentSlideImg');
+      const igSlideCounter = document.getElementById('igSlideCounter');
+      const igPrevBtn = document.getElementById('igPrevBtn');
+      const igNextBtn = document.getElementById('igNextBtn');
+      const igLikeBtn = document.getElementById('igLikeBtn');
+      const igSaveBtn = document.getElementById('igSaveBtn');
+      const igLikesCount = document.getElementById('igLikesCount');
+      const igDotsContainer = document.getElementById('igDotsContainer');
+      const autoPlayFeedBtn = document.getElementById('autoPlayFeedBtn');
+      const autoPlayIcon = document.getElementById('autoPlayIcon');
+      const autoPlayText = document.getElementById('autoPlayText');
+      const feedJumpGrid = document.getElementById('feedJumpGrid');
+
+      const slideModal = document.getElementById('slideModal');
+      const modalSlideTitle = document.getElementById('modalSlideTitle');
+      const modalSlideImg = document.getElementById('modalSlideImg');
+      const modalDownloadBtn = document.getElementById('modalDownloadBtn');
+      const modalCloseBtn = document.getElementById('modalCloseBtn');
+
+      // --- Application State ---
+      let loadedImage = null; // HTMLImageElement
+      let loadedFileMeta = null; // { name, size, type, dataUrl, width, height }
+      let activeSlideModalItem = null;
+      let isZipping = false;
+
+      const state = {
+        aspectRatio: '1:1', // '1:1' or '4:5'
+        slideCount: 3,
+        isAutoCount: true,
+        format: 'image/png', // 'image/png' or 'image/jpeg'
+        slides: [], // Array of { id, index, dataUrl, blob, width, height, fileName }
+        currentFeedIndex: 0,
+        isLiked: false,
+        likeBaseCount: 1842,
+        isSaved: false,
+        autoPlayInterval: null,
+        isSeamlessMode: false,
+      };
+
+      // ==========================================================================
+      // 1. Theme Management (persisted in localStorage, updates .dark class)
+      // ==========================================================================
+      function initTheme() {
+        const savedTheme = localStorage.getItem('carousel_theme');
+        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const isDark = savedTheme !== null ? savedTheme === 'dark' : prefersDark;
+        applyTheme(isDark);
+      }
+
+      function applyTheme(isDark) {
+        if (isDark) {
+          document.documentElement.classList.add('dark');
+          themeToggleLabel.textContent = 'Light';
+          localStorage.setItem('carousel_theme', 'dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+          themeToggleLabel.textContent = 'Dark';
+          localStorage.setItem('carousel_theme', 'light');
+        }
+      }
+
+      themeToggleBtn.addEventListener('click', () => {
+        const isCurrentlyDark = document.documentElement.classList.contains('dark');
+        applyTheme(!isCurrentlyDark);
+      });
+
+      // ==========================================================================
+      // 2. Drag & Drop and File Input Handling
+      // ==========================================================================
+      browseBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        fileInput.click();
+      });
+
+      dropZone.addEventListener('click', () => {
+        fileInput.click();
+      });
+
+      changeImageBtn.addEventListener('click', () => {
+        fileInput.click();
+      });
+
+      clearImageBtn.addEventListener('click', () => {
+        resetImageState();
+      });
+
+      fileInput.addEventListener('change', (e) => {
+        const files = e.target.files;
+        if (files && files.length > 0) {
+          processSelectedFile(files[0]);
+        }
+      });
+
+      // Drag & drop highlights
+      ['dragenter', 'dragover'].forEach((eventName) => {
+        dropZone.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropZone.classList.add('border-rose-500', 'bg-rose-50/40', 'dark:bg-slate-700/60');
+        });
+      });
+
+      ['dragleave', 'drop'].forEach((eventName) => {
+        dropZone.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropZone.classList.remove('border-rose-500', 'bg-rose-50/40', 'dark:bg-slate-700/60');
+        });
+      });
+
+      dropZone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        if (dt && dt.files && dt.files.length > 0) {
+          processSelectedFile(dt.files[0]);
+        }
+      });
+
+      dismissErrorBtn.addEventListener('click', () => {
+        errorBanner.style.display = 'none';
+      });
+
+      function showError(msg) {
+        errorMessage.textContent = msg;
+        errorBanner.style.display = 'flex';
+      }
+
+      function hideError() {
+        errorBanner.style.display = 'none';
+      }
+
+      function formatBytes(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+      }
+
+      function processSelectedFile(file) {
+        hideError();
+        const validMimes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
+        if (!validMimes.includes(file.type)) {
+          showError('Please select a valid image file (JPEG, PNG, or WebP).');
+          return;
+        }
+
+        // Read the file via standard JavaScript FileReader
+        const reader = new FileReader();
+
+        reader.onerror = () => {
+          showError('Failed to read the file. Please try another image.');
+        };
+
+        reader.onload = (e) => {
+          const dataUrl = e.target.result;
+          const img = new Image();
+
+          img.onload = () => {
+            loadedImage = img;
+            loadedFileMeta = {
+              name: file.name,
+              size: file.size,
+              type: file.type,
+              dataUrl: dataUrl,
+              width: img.naturalWidth || img.width,
+              height: img.naturalHeight || img.height,
+            };
+
+            displayImageMetadata();
+            calculateAndSlice();
+          };
+
+          img.onerror = () => {
+            showError('Could not decode image. Please check the file and try again.');
+          };
+
+          img.src = dataUrl;
+        };
+
+        reader.readAsDataURL(file);
+      }
+
+      function displayImageMetadata() {
+        if (!loadedFileMeta) return;
+
+        imageThumb.src = loadedFileMeta.dataUrl;
+        imageName.textContent = loadedFileMeta.name;
+        imageDimensions.textContent = `${loadedFileMeta.width} × ${loadedFileMeta.height} px`;
+
+        const aspect = loadedFileMeta.width / loadedFileMeta.height;
+        imageAspect.textContent = `Ratio: ${aspect.toFixed(2)}:1`;
+        imageSize.textContent = formatBytes(loadedFileMeta.size);
+
+        if (aspect >= 2.0) {
+          imageHint.textContent = 'Wide panorama detected — ideal for multi-slide Instagram carousel.';
+        } else {
+          imageHint.textContent = 'Standard image format — can be split into equal slices.';
+        }
+
+        dropZone.style.display = 'none';
+        imageInfoCard.style.display = 'flex';
+        controlsSection.style.display = 'block';
+      }
+
+      function resetImageState() {
+        loadedImage = null;
+        loadedFileMeta = null;
+        state.slides = [];
+        state.currentFeedIndex = 0;
+        if (state.autoPlayInterval) {
+          clearInterval(state.autoPlayInterval);
+          state.autoPlayInterval = null;
+        }
+
+        fileInput.value = '';
+        dropZone.style.display = 'block';
+        imageInfoCard.style.display = 'none';
+        controlsSection.style.display = 'none';
+        previewSection.style.display = 'none';
+        feedSection.style.display = 'none';
+        hideError();
+      }
+
+      // ==========================================================================
+      // 3. Slicing Math & HTML5 Canvas API Slicing Logic
+      // ==========================================================================
+      function calculateOptimalSlides(width, height, targetRatio) {
+        const singleSlideRatio = targetRatio === '1:1' ? 1.0 : 4 / 5;
+        const imageRatio = width / height;
+        const optimal = Math.round(imageRatio / singleSlideRatio);
+        return Math.min(10, Math.max(2, optimal || 2));
+      }
+
+      /**
+       * HTML5 CANVAS SLICING LOGIC:
+       * 1. Target Dimensions:
+       *    - Standard Instagram feed width: 1080px.
+       *    - 1:1 Square: 1080px x 1080px.
+       *    - 4:5 Portrait: 1080px x 1350px.
+       * 2. Panorama Symmetrical Crop:
+       *    - Required total panorama aspect: slideCount * (targetW / targetH).
+       *    - If current aspect is wider, horizontal sides are cropped symmetrically.
+       *    - If current aspect is taller, vertical top/bottom is cropped symmetrically.
+       * 3. Slicing using ctx.drawImage():
+       *    - Each slide gets source slice width: sw = cropWidth / slideCount.
+       *    - Slice i starts at horizontal position: sx = cropX + i * sw.
+       *    - An offscreen canvas draws the slice into target 1080px dimensions.
+       * 4. Export:
+       *    - Slices are saved as both Blob and DataURL for instant preview and ZIP packaging.
+       */
+      async function sliceImage() {
+        if (!loadedImage) return;
+
+        const img = loadedImage;
+        const srcW = img.naturalWidth || img.width;
+        const srcH = img.naturalHeight || img.height;
+
+        const targetW = 1080;
+        const targetH = state.aspectRatio === '1:1' ? 1080 : 1350;
+
+        const singleAspect = targetW / targetH;
+        const totalRequiredAspect = state.slideCount * singleAspect;
+        const currentAspect = srcW / srcH;
+
+        let cropX = 0;
+        let cropY = 0;
+        let cropW = srcW;
+        let cropH = srcH;
+
+        if (currentAspect > totalRequiredAspect) {
+          cropW = srcH * totalRequiredAspect;
+          cropX = (srcW - cropW) / 2;
+        } else {
+          cropH = srcW / totalRequiredAspect;
+          cropY = (srcH - cropH) / 2;
+        }
+
+        const sourceSliceW = cropW / state.slideCount;
+        const sourceSliceH = cropH;
+
+        // Create offscreen canvas
+        const canvas = document.createElement('canvas');
+        canvas.width = targetW;
+        canvas.height = targetH;
+        const ctx = canvas.getContext('2d');
+
+        if (!ctx) {
+          showError('Canvas context could not be initialized.');
+          return;
+        }
+
+        const slides = [];
+        const ext = state.format === 'image/jpeg' ? 'jpg' : 'png';
+        const quality = state.format === 'image/jpeg' ? 0.95 : 1.0;
+
+        for (let i = 0; i < state.slideCount; i++) {
+          ctx.fillStyle = '#0f172a';
+          ctx.fillRect(0, 0, targetW, targetH);
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+
+          const sx = cropX + i * sourceSliceW;
+          const sy = cropY;
+
+          // Extract slice into target canvas
+          ctx.drawImage(img, sx, sy, sourceSliceW, sourceSliceH, 0, 0, targetW, targetH);
+
+          const dataUrl = canvas.toDataURL(state.format, quality);
+
+          const blob = await new Promise((resolve, reject) => {
+            canvas.toBlob(
+              (b) => {
+                if (b) resolve(b);
+                else reject(new Error('Canvas blob generation failed'));
+              },
+              state.format,
+              quality
+            );
+          });
+
+          const slideIndexPadded = String(i + 1).padStart(2, '0');
+
+          slides.push({
+            id: i + 1,
+            index: i,
+            dataUrl,
+            blob,
+            width: targetW,
+            height: targetH,
+            fileName: `slide-${slideIndexPadded}.${ext}`,
+            aspectRatio: state.aspectRatio,
+          });
+        }
+
+        state.slides = slides;
+        state.currentFeedIndex = 0;
+
+        renderSlicesGrid();
+        renderFeedMockup();
+
+        previewSection.style.display = 'block';
+        feedSection.style.display = 'block';
+      }
+
+      function calculateAndSlice() {
+        if (!loadedFileMeta) return;
+
+        const recommended = calculateOptimalSlides(
+          loadedFileMeta.width,
+          loadedFileMeta.height,
+          state.aspectRatio
+        );
+
+        recommendedBadge.textContent = `Recommended: ${recommended} slides`;
+
+        if (state.isAutoCount) {
+          state.slideCount = recommended;
+        }
+
+        updateControlsUI();
+        sliceImage();
+      }
+
+      // ==========================================================================
+      // 4. Controls UI Binding
+      // ==========================================================================
+      function renderSlideCountButtons() {
+        slideCountContainer.innerHTML = '';
+        const recommended = loadedFileMeta
+          ? calculateOptimalSlides(loadedFileMeta.width, loadedFileMeta.height, state.aspectRatio)
+          : 3;
+
+        for (let count = 2; count <= 10; count++) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = `slide-num-btn ${state.slideCount === count ? 'active' : ''}`;
+          btn.innerHTML = `<span>${count}</span>`;
+
+          if (count === recommended && state.slideCount !== count) {
+            btn.innerHTML += `<span class="rec-dot">●</span>`;
+          }
+
+          btn.addEventListener('click', () => {
+            state.slideCount = count;
+            state.isAutoCount = false;
+            updateControlsUI();
+            sliceImage();
+          });
+
+          slideCountContainer.appendChild(btn);
+        }
+      }
+
+      function updateControlsUI() {
+        // Ratio buttons
+        if (state.aspectRatio === '1:1') {
+          ratioSquareBtn.classList.add('active');
+          ratioPortraitBtn.classList.remove('active');
+        } else {
+          ratioSquareBtn.classList.remove('active');
+          ratioPortraitBtn.classList.add('active');
+        }
+
+        // Format buttons
+        if (state.format === 'image/png') {
+          formatPngBtn.classList.add('active');
+          formatJpegBtn.classList.remove('active');
+        } else {
+          formatPngBtn.classList.remove('active');
+          formatJpegBtn.classList.add('active');
+        }
+
+        // Slide numbers
+        renderSlideCountButtons();
+
+        // Summary bar
+        const targetW = 1080;
+        const targetH = state.aspectRatio === '1:1' ? 1080 : 1350;
+        const totalW = targetW * state.slideCount;
+
+        calcSlideCount.textContent = state.slideCount;
+        calcDimensions.textContent = `${targetW} × ${targetH} px`;
+        calcTotalWidth.textContent = totalW;
+        calcTotalHeight.textContent = targetH;
+      }
+
+      ratioSquareBtn.addEventListener('click', () => {
+        state.aspectRatio = '1:1';
+        if (state.isAutoCount && loadedFileMeta) {
+          state.slideCount = calculateOptimalSlides(loadedFileMeta.width, loadedFileMeta.height, '1:1');
+        }
+        updateControlsUI();
+        sliceImage();
+      });
+
+      ratioPortraitBtn.addEventListener('click', () => {
+        state.aspectRatio = '4:5';
+        if (state.isAutoCount && loadedFileMeta) {
+          state.slideCount = calculateOptimalSlides(loadedFileMeta.width, loadedFileMeta.height, '4:5');
+        }
+        updateControlsUI();
+        sliceImage();
+      });
+
+      autoSlideBtn.addEventListener('click', () => {
+        state.isAutoCount = true;
+        if (loadedFileMeta) {
+          state.slideCount = calculateOptimalSlides(
+            loadedFileMeta.width,
+            loadedFileMeta.height,
+            state.aspectRatio
+          );
+        }
+        updateControlsUI();
+        sliceImage();
+      });
+
+      formatPngBtn.addEventListener('click', () => {
+        state.format = 'image/png';
+        updateControlsUI();
+        sliceImage();
+      });
+
+      formatJpegBtn.addEventListener('click', () => {
+        state.format = 'image/jpeg';
+        updateControlsUI();
+        sliceImage();
+      });
+
+      // ==========================================================================
+      // 5. Grid Previewer Rendering (Cards vs Seamless Ribbon)
+      // ==========================================================================
+      const activeViewClass = 'px-2.5 py-1 rounded-md font-semibold text-slate-900 dark:text-white bg-white dark:bg-slate-800 shadow-xs transition-colors';
+      const inactiveViewClass = 'px-2.5 py-1 rounded-md font-medium text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors';
+
+      viewCardsBtn.addEventListener('click', () => {
+        state.isSeamlessMode = false;
+        viewCardsBtn.className = activeViewClass;
+        viewSeamlessBtn.className = inactiveViewClass;
+        slidesContainer.className = 'flex items-stretch min-w-max gap-3 cards-mode';
+        renderSlicesGrid();
+      });
+
+      viewSeamlessBtn.addEventListener('click', () => {
+        state.isSeamlessMode = true;
+        viewSeamlessBtn.className = activeViewClass;
+        viewCardsBtn.className = inactiveViewClass;
+        slidesContainer.className = 'flex items-stretch min-w-max seamless-mode';
+        renderSlicesGrid();
+      });
+
+      function renderSlicesGrid() {
+        slidesContainer.innerHTML = '';
+
+        state.slides.forEach((slide, idx) => {
+          const isPortrait = slide.aspectRatio === '4:5';
+
+          if (state.isSeamlessMode) {
+            // Seamless Ribbon Item
+            const sliceEl = document.createElement('div');
+            sliceEl.className = `seamless-slice ${isPortrait ? 'portrait' : ''}`;
+            sliceEl.innerHTML = `
+              <img src="${slide.dataUrl}" alt="Slide ${slide.id}" />
+              <div class="seamless-number">${String(slide.id).padStart(2, '0')}</div>
+              ${idx < state.slides.length - 1 ? '<div class="seamless-cut-line"></div>' : ''}
+            `;
+            sliceEl.addEventListener('click', () => openSlideModal(slide));
+            slidesContainer.appendChild(sliceEl);
+          } else {
+            // Individual Card Item
+            const cardEl = document.createElement('div');
+            cardEl.className = 'slide-card';
+            cardEl.innerHTML = `
+              <div class="slide-card-header">
+                <strong class="text-slate-900 dark:text-white">Slide ${String(slide.id).padStart(2, '0')}</strong>
+                <span>${slide.width} × ${slide.height}</span>
+              </div>
+              <div class="slide-card-img-wrap ${isPortrait ? 'portrait' : ''}">
+                <img src="${slide.dataUrl}" alt="Slide ${slide.id}" />
+              </div>
+              <div class="slide-card-footer">
+                <span class="slide-file-label">${slide.fileName}</span>
+                <button type="button" class="single-download-btn px-2.5 py-1 rounded-md text-xs font-semibold bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 shadow-xs transition-colors">Save</button>
+              </div>
+            `;
+
+            const imgWrap = cardEl.querySelector('.slide-card-img-wrap');
+            imgWrap.addEventListener('click', () => openSlideModal(slide));
+
+            const dlBtn = cardEl.querySelector('.single-download-btn');
+            dlBtn.addEventListener('click', (e) => {
+              e.stopPropagation();
+              downloadSingleSlide(slide);
+            });
+
+            slidesContainer.appendChild(cardEl);
+          }
+        });
+      }
+
+      function downloadSingleSlide(slide) {
+        const a = document.createElement('a');
+        a.href = slide.dataUrl;
+        a.download = slide.fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      }
+
+      // ==========================================================================
+      // 6. Download All as ZIP (using JSZip via CDN)
+      // ==========================================================================
+      async function downloadAllAsZip() {
+        if (state.slides.length === 0 || isZipping) return;
+
+        if (typeof JSZip === 'undefined') {
+          showError('JSZip library could not be loaded from CDN. Please check your network.');
+          return;
+        }
+
+        try {
+          isZipping = true;
+          downloadAllTopText.textContent = 'Zipping...';
+          downloadAllGridText.textContent = 'Zipping...';
+
+          const zip = new JSZip();
+          const folderName = loadedFileMeta
+            ? loadedFileMeta.name.replace(/\.[^/.]+$/, '').replace(/[^a-zA-Z0-9_-]/g, '_')
+            : 'instagram-carousel';
+
+          const folder = zip.folder(folderName) || zip;
+
+          state.slides.forEach((slide) => {
+            folder.file(slide.fileName, slide.blob);
+          });
+
+          const readme = [
+            '====================================================',
+            ' INSTAGRAM SEAMLESS CAROUSEL SLIDES',
+            '====================================================',
+            '',
+            `Total Slides: ${state.slides.length}`,
+            `Slide Aspect: ${state.aspectRatio === '1:1' ? 'Square (1:1)' : 'Portrait (4:5)'}`,
+            `Slide Dimensions: ${state.slides[0].width} x ${state.slides[0].height} px`,
+            '',
+            'HOW TO POST ON INSTAGRAM:',
+            '1. Open Instagram on your mobile device or web browser.',
+            '2. Tap the "+" (New Post) button and choose "Post".',
+            '3. Tap the "Select Multiple" icon (stacked squares).',
+            '4. Select your slides in numerical order: slide-01, slide-02, etc.',
+            '5. Verify the aspect ratio toggle matches (1:1 or 4:5).',
+            '6. Add your caption and publish your seamless carousel!',
+          ].join('\n');
+
+          folder.file('INSTRUCTIONS.txt', readme);
+
+          const zipBlob = await zip.generateAsync({
+            type: 'blob',
+            compression: 'DEFLATE',
+            compressionOptions: { level: 6 },
+          });
+
+          const downloadUrl = URL.createObjectURL(zipBlob);
+          const a = document.createElement('a');
+          a.href = downloadUrl;
+          a.download = `${folderName}-slides.zip`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+
+          setTimeout(() => URL.revokeObjectURL(downloadUrl), 4000);
+        } catch (err) {
+          showError('Failed to generate ZIP archive: ' + (err.message || 'Unknown error'));
+        } finally {
+          isZipping = false;
+          downloadAllTopText.textContent = 'Download All (.zip)';
+          downloadAllGridText.textContent = 'Download All';
+        }
+      }
+
+      downloadAllTopBtn.addEventListener('click', downloadAllAsZip);
+      downloadAllGridBtn.addEventListener('click', downloadAllAsZip);
+
+      // ==========================================================================
+      // 7. Instagram Feed Simulator
+      // ==========================================================================
+      function renderFeedMockup() {
+        if (state.slides.length === 0) return;
+
+        if (state.currentFeedIndex >= state.slides.length) {
+          state.currentFeedIndex = 0;
+        }
+
+        const currentSlide = state.slides[state.currentFeedIndex];
+        igCurrentSlideImg.src = currentSlide.dataUrl;
+
+        if (currentSlide.aspectRatio === '4:5') {
+          igViewport.classList.remove('aspect-square');
+          igViewport.classList.add('aspect-[4/5]');
+        } else {
+          igViewport.classList.remove('aspect-[4/5]');
+          igViewport.classList.add('aspect-square');
+        }
+
+        igSlideCounter.textContent = `${state.currentFeedIndex + 1}/${state.slides.length}`;
+
+        // Nav arrows
+        igPrevBtn.style.display = state.currentFeedIndex > 0 ? 'flex' : 'none';
+        igNextBtn.style.display = state.currentFeedIndex < state.slides.length - 1 ? 'flex' : 'none';
+
+        // Dots
+        igDotsContainer.innerHTML = '';
+        state.slides.forEach((_, idx) => {
+          const dot = document.createElement('div');
+          dot.className = `ig-dot ${idx === state.currentFeedIndex ? 'active' : ''}`;
+          igDotsContainer.appendChild(dot);
+        });
+
+        // Jump buttons
+        feedJumpGrid.innerHTML = '';
+        state.slides.forEach((_, idx) => {
+          const jumpBtn = document.createElement('button');
+          jumpBtn.type = 'button';
+          jumpBtn.className = `jump-btn ${idx === state.currentFeedIndex ? 'active' : ''}`;
+          jumpBtn.textContent = idx + 1;
+          jumpBtn.addEventListener('click', () => {
+            state.currentFeedIndex = idx;
+            renderFeedMockup();
+          });
+          feedJumpGrid.appendChild(jumpBtn);
+        });
+      }
+
+      igPrevBtn.addEventListener('click', () => {
+        if (state.currentFeedIndex > 0) {
+          state.currentFeedIndex--;
+          renderFeedMockup();
+        }
+      });
+
+      igNextBtn.addEventListener('click', () => {
+        if (state.currentFeedIndex < state.slides.length - 1) {
+          state.currentFeedIndex++;
+          renderFeedMockup();
+        }
+      });
+
+      // Touch swipe support
+      let touchStartX = 0;
+      let touchEndX = 0;
+
+      igViewport.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+      }, { passive: true });
+
+      igViewport.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        const diff = touchStartX - touchEndX;
+        if (Math.abs(diff) > 40) {
+          if (diff > 0 && state.currentFeedIndex < state.slides.length - 1) {
+            state.currentFeedIndex++;
+            renderFeedMockup();
+          } else if (diff < 0 && state.currentFeedIndex > 0) {
+            state.currentFeedIndex--;
+            renderFeedMockup();
+          }
+        }
+      }, { passive: true });
+
+      // Like button
+      igLikeBtn.addEventListener('click', () => {
+        state.isLiked = !state.isLiked;
+        if (state.isLiked) {
+          igLikeBtn.classList.add('liked');
+          igLikesCount.textContent = `${(state.likeBaseCount + 1).toLocaleString()} likes`;
+        } else {
+          igLikeBtn.classList.remove('liked');
+          igLikesCount.textContent = `${state.likeBaseCount.toLocaleString()} likes`;
+        }
+      });
+
+      // Save bookmark button
+      igSaveBtn.addEventListener('click', () => {
+        state.isSaved = !state.isSaved;
+        if (state.isSaved) {
+          igSaveBtn.classList.add('saved');
+        } else {
+          igSaveBtn.classList.remove('saved');
+        }
+      });
+
+      // Auto-Play toggle
+      autoPlayFeedBtn.addEventListener('click', () => {
+        if (state.autoPlayInterval) {
+          clearInterval(state.autoPlayInterval);
+          state.autoPlayInterval = null;
+          autoPlayIcon.textContent = '▶';
+          autoPlayText.textContent = 'Auto Play';
+          autoPlayFeedBtn.classList.remove('bg-rose-600', 'text-white');
+          autoPlayFeedBtn.classList.add('bg-slate-100', 'text-slate-700', 'dark:bg-slate-700', 'dark:text-slate-200');
+        } else {
+          autoPlayIcon.textContent = '⏸';
+          autoPlayText.textContent = 'Pause';
+          autoPlayFeedBtn.classList.remove('bg-slate-100', 'text-slate-700', 'dark:bg-slate-700', 'dark:text-slate-200');
+          autoPlayFeedBtn.classList.add('bg-rose-600', 'text-white');
+          state.autoPlayInterval = setInterval(() => {
+            state.currentFeedIndex = (state.currentFeedIndex + 1) % state.slides.length;
+            renderFeedMockup();
+          }, 2000);
+        }
+      });
+
+      // ==========================================================================
+      // 8. Slide Zoom Modal
+      // ==========================================================================
+      function openSlideModal(slide) {
+        activeSlideModalItem = slide;
+        modalSlideTitle.textContent = `Slide ${String(slide.id).padStart(2, '0')} (${slide.width} × ${slide.height} px)`;
+        modalSlideImg.src = slide.dataUrl;
+        slideModal.style.display = 'flex';
+      }
+
+      function closeSlideModal() {
+        activeSlideModalItem = null;
+        slideModal.style.display = 'none';
+      }
+
+      modalCloseBtn.addEventListener('click', closeSlideModal);
+      slideModal.addEventListener('click', (e) => {
+        if (e.target === slideModal) {
+          closeSlideModal();
+        }
+      });
+
+      modalDownloadBtn.addEventListener('click', () => {
+        if (activeSlideModalItem) {
+          downloadSingleSlide(activeSlideModalItem);
+        }
+      });
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && slideModal.style.display === 'flex') {
+          closeSlideModal();
+        }
+      });
+
+      // Initialize
+      initTheme();
+      renderSlideCountButtons();
+    });
+  </script>
+</body>
+</html>
+
